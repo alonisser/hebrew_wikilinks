@@ -1,11 +1,10 @@
 #requirements: installing sqlalchemy and requests.. easily done with pip install
 import requests,json
 from datetime import datetime,date
-
-
 from sqlalchemy import create_engine,String,Unicode,Integer,Boolean, Column, func,distinct, desc
 
 connectstring = 'sqlite:///wikilink.db' #using sqlite for simplicy sake
+engine = create_engine(connectstring)
 #engine = create_engine(connectstring) #created the engine connecting sqlalchemy to the db
 
 from sqlalchemy.orm import sessionmaker
@@ -17,7 +16,7 @@ Base  = declarative_base()
 def init_db():
 
     engine = create_engine(connectstring) #created the engine connecting sqlalchemy to the db
-
+    return engine
 
 def load_session():
 
@@ -25,7 +24,7 @@ def load_session():
     session = Session() #the session used to communicate with the db
     return session
 
-
+session = load_session()
 
 class Wikilink(Base):
 
@@ -36,6 +35,7 @@ class Wikilink(Base):
     title = Column(String(350))
     is_hebrew = Column(Boolean)
     hebrew_title=Column(Unicode(350))
+    is_error = Column(Boolean)
 
 
     def to_dict(self):
@@ -44,61 +44,81 @@ class Wikilink(Base):
         except:
             title = self.title
 
-        return {'id':self.id, 'title':title, 'is_hebrew':self.is_hebrew,'hebrew_title':self.hebrew_title}
+        return {'title':title,'hebrew_title':self.hebrew_title, 'is_hebrew':self.is_hebrew}
+
+    def __str__(self):
+        return self.to_dict().get('title') + ' has hebrew link: '+str(self.to_dict().get('is_hebrew'))
 
 def wiki_populate():
     '''a function to populate the db with wikipedia links
     initializing the db and creating the tables if needed.'''
 
-    init_db()
     Wikilink.metadata.create_all(engine)
+    #uncomment the next block to enable db delete on each run
+    # session.query(Wikilink).delete()
+    # session.commit()
 
-    ip_range = []
-    for i in range(228,238,1):
-        for n in range(0,256,1):
-            ip_range.append('147.%d.%d'%(i,n))
-    #ip_range = ['147.237.70']#debuggin
 
-    for ip in ip_range:
-        try:
-            wikifetch(ip)
-        except:
-            continue
 
-def wikifetch(ip,more = None):
-    '''A function that does the actuall fetching of edits from wikipedia api'''
+    with open("titles.txt") as f:
+        for title in f.readlines():
 
-    session = load_session()
-    timestamp = datetime.now().isoformat()
-    headers = {'User-Agent':'wikipediagovmonitoring'}
-    if not more:
-        print "fetching..%s" %ip
-        query = 'http://he.wikipedia.org/w/api.php?action=query&list=usercontribs&format=json&uclimit=500&ucuserprefix=%s&ucdir=newer&ucprop=title|ids' % ip
-    else:
-        print 'fetching continues for ip ', ip
-        query = 'http://he.wikipedia.org/w/api.php?action=query&list=usercontribs&format=json&uclimit=500&ucuserprefix=%s&uccontinue=%s&ucdir=newer&ucprop=title|ids' % (ip, more)
-    #print ip
+            try:
+                wikifetch(title = title.rstrip("\n"))
+            except:
+                link = Wikilink(title = title, is_error = True)
+                session.add(link)
+                session.flush()
+    session.commit()
+
+
+def wikifetch(title, more = None):
+    '''A function that does the actuall fetching hebrew titles from wikipedia api'''
+
+
+    headers = {'User-Agent':'wikipedia_getting_hebrew_title'}
+
+    print "fetching..%s" % title
+    query = 'http://en.wikipedia.org/w/api.php?action=query&format=json&lllimit=500&titles=%s&prop=langlinks' % title
+
     try:
         r = requests.get(query,headers=headers)
+        print r.url
     except:
-        print "raising error from ip:%s" % ip
+        print "raising error from title %s" % title
         raise
     if r.ok:
         content = json.loads(r.content)
-        print "number of items from %s is %s" % (ip,len(content['query']['usercontribs']))
-        for i in content['query']['usercontribs']:
-            link = Wikilink(user_ip=i['user'],
-                            title=i['title'][0:350],
-                            page=i['pageid'],
-                            revision=i['revid'],
-                            timestamp=timestamp)
+        value = content['query']['pages'].keys()[0]
+        is_hebrew = False
+        hebrew_title = None
+        links = content['query']['pages'][value]['langlinks']
 
-            #print edit
-            session.add(link)
-            #print link.id,link.title, link.page, link.timestamp, link.revision,link.user_ip
-            session.flush()
+        for lang in links:
+
+            if lang['lang'] == 'he':
+                is_hebrew = True
+                hebrew_title = lang[r'*'][0:350]
+                break
+            else:
+                is_hebrew = False
+                hebrew_title = None
+
+
+        link = Wikilink(is_hebrew  = is_hebrew,
+                        title = title,
+                        hebrew_title = hebrew_title)
+        session.add(link)
+        session.commit()
 
         # if content.get('query-continue',False):
         #     wikifetch(ip,more =content['query-continue']['usercontribs']["uccontinue"])#recursive call to the function if there is more data in the same Ip
 if __name__ == '__main__':
     wiki_populate()
+    engine = init_db()
+    session = load_session()
+    db = session.query(Wikilink).all()
+    with open('results.txt','w') as f:
+        for line in db:
+            line = str(line) + '\n'
+            f.write(line)
