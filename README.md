@@ -1,5 +1,6 @@
 #Fetch hebrew links
 ----
+###quick and dirty hack to get this done
 
 getting a list of english [wikipedia][d1] titles in a simple plain txt **titles.txt** and returning a simple sqlite Db containing a table with the
 original titles, if there is a hebrew
@@ -25,7 +26,8 @@ you can also use the _results.txt_ plain text file with the result
 
 ##Notice!
 
-this only checks if there is a hebrew link for the english title! counting that between wikimedia algorithms and volunteers the common case is that this is a True indication.  there can be an english Title that **has a hebrew article which isn't registered in the english title**.  I don't have a way to know that..
+This script only checks if there is a hebrew link for the english title!
+I assumed that between wikimedia algorithms and volunteers this would be enough for most cases.  there can be an english Title that **has a hebrew article which isn't registered in the english title**.  I don't have a way to know that..
 
 [d1]:http://en.wikipedia.org
 [d2]:http://www.mediawiki.org/wiki/API%3aQuery_-_Properties#langlinks_.2F_ll
