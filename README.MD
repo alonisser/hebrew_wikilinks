@@ -15,7 +15,7 @@ just run:
     pip install -r require.txt
 
 ##running:
-set a titles.txt file with all the english titles(every title in a different line) and run:
+set a **titles.txt** (currently containing sample info) file with all the english titles(every title in a different line) and run:
 
     python fetch_hebrew_links.py
 
