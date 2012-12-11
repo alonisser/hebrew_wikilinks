@@ -30,4 +30,4 @@ this only checks if there is a hebrew link for the english title! counting that 
 [d1]:http://en.wikipedia.org
 [d2]:http://www.mediawiki.org/wiki/API%3aQuery_-_Properties#langlinks_.2F_ll
 [d3]:http://docs.python-requests.org/en/latest/
-[d3]:http://www.sqlalchemy.org/
+[d4]:http://www.sqlalchemy.org/
