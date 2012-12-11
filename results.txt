@@ -1,0 +1,3 @@
+Israel has hebrew link: True
+Battle_of_Radzymin_(1920) has hebrew link: False
+Oriel College, Oxford has hebrew link: False
